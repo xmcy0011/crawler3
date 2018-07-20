@@ -3,7 +3,7 @@ import socket
 import urllib.request
 import re
 import xlwt  # 用来创建excel文档并写入数据
-import pymysql # mysql
+import pymysql  # mysql
 import threading  # 多线程抓取
 import time
 from urllib.parse import quote
@@ -70,9 +70,6 @@ def get(html):
 
 
 def get_job_desc(url):  # 获取职位描述
-    # url = "https://jobs.51job.com/shanghai/102581378.html?s=01&t=0"
-    # if url == 'https://jobs.51job.com/shanghai/102581378.html?s=01&t=0':
-    #     print('yes')
     a = urllib.request.urlopen(url)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     items = []
@@ -160,7 +157,7 @@ def thread_process(startPage, endPagae, jobName):
         datetime, jobName, startPage)  # 表格名称
     wb = xlwt.Workbook(encoding='utf-8')  # 创建excel文件，声明编码
     ws = wb.add_sheet('sheet1', cell_overwrite_ok=True)  # 创建表格
-    headData = ['JobName', 'JobURL', 'Company', 'Adress', 'Salary', 'Date', 'AllJobUrl', 'CompanyType',
+    headData = ['JobName', 'JobURL', 'Company', 'Adress', 'Salary', 'Date', 'PublishDate', 'AllJobUrl', 'CompanyType',
                 'CompanySize', 'Industry', 'Education', 'Experience', 'Number', 'Welfare', 'JobDesc', 'JobLabel', 'ContactAdress']  # 表头部信息
     for colnum in range(0, len(headData)):
         ws.write(0, colnum, headData[colnum],
@@ -174,7 +171,7 @@ def thread_process(startPage, endPagae, jobName):
         temp = []
         try:
             temp = get(get_content(jobName, each))
-        except:
+        except Exception:
             print("error")
             continue
         items = [[] for i in range(len(temp))]
@@ -186,16 +183,12 @@ def thread_process(startPage, endPagae, jobName):
             if 'https://jobs.51job.com' in url:
                 try:
                     descItems = get_job_desc(url)
-                except:
+                except Exception:
                     print("error")
             tempArr = []
             tempArr.extend(temp[i])
             tempArr.extend(descItems)
             items[i].extend(tempArr)
-            # 每30个存一次，防止内存溢出
-            # 平均500字，excel缓存不能超过32767个，发现特点职位描述，直接将缓存写到文件
-            #jobDescLen = 0 if len(descItems) < 8 else len(descItems[8])
-            #if i % 30 == 0 or (i+1) == len(temp) or jobDescLen > 1500:
             excel_write(items, index, ws)
         wb.save(newTable)
     wb.save(newTable)
@@ -244,13 +237,43 @@ def start_write_to_excel(jobName):
 
     print('successful and exit.')
 
-def create_db_table():
-    # 打开数据库连接
-    db = pymysql.connect(host='127.0.0.1',port=3306,user='root',passwd='837556884',db='crawler',charset='utf8')
-    # 使用cursor()方法获取操作游标
-    cursor = db.cursor()
 
-    # 使用 execute() 方法执行 SQL，如果表存在则删除
+def create_db_table(jobName):
+    db = pymysql.connect(host='127.0.0.1', port=3306, user='root',
+                         passwd='837556884', db='crawler', charset='utf8')  # 打开数据库连接
+    cursor = db.cursor()    # 使用cursor()方法获取操作游标
+    tbName = '51Job抓取_' + jobName + '_北上广深杭_不限行业'
+    sql = 'show tables like \'' + tbName + '\''     # 定义要执行的SQL语句
+
+    cursor.execute(sql)
+
+    if cursor.rowcount <= 0:
+        sql = 'CREATE TABLE \'' + tbName + '\' (' \
+            'JobName text COMMENT \'招聘职位\',' \
+            'JobURL text COMMENT \'职位URL\',' \
+            'Company text COMMENT \'公司\',' \
+            'Adress` text COMMENT \'地址\',' \
+            'Salary` varchar(24) DEFAULT NULL COMMENT \'薪资\',' \
+            'Date` date DEFAULT NULL COMMENT \'抓取时间\',' \
+            'PublishDate` varchar(8) DEFAULT NULL COMMENT \'发布时间\',' \
+            'AllJobUrl` text COMMENT \'该公司所有职位URL\',' \
+            'CompanyType` varchar(12) DEFAULT NULL COMMENT \'公司类型\',' \
+            'CompanySize` varchar(12) DEFAULT NULL COMMENT \'公司规模\',' \
+            'Industry` varchar(128) DEFAULT NULL COMMENT \'所在行业\',' \
+            'Education` varchar(32) DEFAULT NULL COMMENT \'学历\',' \
+            'Experience` varchar(12) DEFAULT NULL COMMENT \'经验要求\',' \
+            'Number` varchar(12) DEFAULT NULL COMMENT \'人数\',' \
+            'Welfare` text COMMENT \'福利\',' \
+            'JobDesc` text COMMENT \'职位信息\',' \
+            'JobLabel` varchar(64) DEFAULT NULL COMMENT \'职位标签\',' \
+            'ContactAdress` varchar(128) DEFAULT NULL COMMENT \'联系地址\'' \
+            ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
+        print(sql)
+        cursor.execute(sql)
+        if cursor.rowcount >= 1:
+            print("已成功创建表："+tbName)
+    # 关闭数据库链接
+    cursor = db.close()
 
 
 # def start_write_to_mysql():
@@ -285,6 +308,8 @@ if __name__ == '__main__':
     # 设计：视觉设计 UI设计 网页设计 平面设计 交互设计 用户研究
     # 新兴领域：人工智能 物联网 区块链 VR/AR 新能源
     # 高端岗位：技术经理 技术总监 架构师 CTO 运维总监 技术合伙人 项目总监 测试总监
-    start_write_to_excel("产品经理")
+    jobName = "产品经理"
+    create_db_table(jobName)
+    # start_write_to_excel(jobName)
     # thread_process(806, 961)
     # start_write_to_mysql()

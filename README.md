@@ -46,12 +46,14 @@ python：3.6
 reg = re.compile(r'class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2"><a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? <span class="t5">(.*?)</span>', re.S)  # 匹配换行符
 ```
 
-可以再这里观察：
-[https://tool.lu/regex/](https://tool.lu/regex/)  提示：请勾选“单行”
+可以在这里观察：  
+[https://tool.lu/regex/](https://tool.lu/regex/)  
+**提示：请勾选“单行”**
 
-## 示例
+## 预览
 
-![爬取列表](https://github.com/xmcy0011/crawler3/blob/master/Resources/Demo/2018.7已爬取示例.jpg)
+![爬取列表](https://github.com/xmcy0011/crawler3/blob/master/Resources/Demo/2018.7已爬取示例.jpg)  
+
 ![产品经理示例](https://github.com/xmcy0011/crawler3/blob/master/Resources/Demo/2018.7产品经理.jpg)
 
 ## License

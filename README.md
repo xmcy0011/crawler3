@@ -14,8 +14,8 @@ python：3.6
 
 ## 示例
 
-![爬取列表](https://github.com/xmcy0011/crawler3/tree/master/Resources/Demo/2018.7已爬取示例.jpg)
-![产品经理示例](https://github.com/xmcy0011/crawler3/tree/master/Resources/Demo/2018.7产品经理.jpg)
+![爬取列表](https://github.com/xmcy0011/crawler3/blob/master/Resources/Demo/2018.7已爬取示例.jpg)
+![产品经理示例](https://github.com/xmcy0011/crawler3/blob/master/Resources/Demo/2018.7产品经理.jpg)
 
 ## License
 

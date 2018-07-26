@@ -5,9 +5,9 @@ import re
 import xlwt  # 用来创建excel文档并写入数据
 import pymysql  # mysql
 import threading  # 多线程抓取
-import time
 from urllib.parse import quote
-
+import datetime
+import ssl
 
 def url_config(jobName):
     # 北上广深杭 不限行业
@@ -47,15 +47,15 @@ def url_config(jobName):
 
 
 def get_content(jobName, page):  # 获取原码
-    url = url_config(jobName) + str(page)+'.html'
-    a = urllib.request.urlopen(url)  # 打开网址
+    url = url_config(jobName) + str(page) + '.html'
+    context = ssl._create_unverified_context() 
+    a = urllib.request.urlopen(url,context=context)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     return html
 
 
 def get_total_count(html):
-    reg = re.compile(
-        r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
+    reg = re.compile(r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
     items = re.findall(reg, html)
     if len(items) >= 0:
         return items[0]
@@ -64,87 +64,72 @@ def get_total_count(html):
 
 def get(html):
     # 职位 职位url 公司名 工作地点 薪资 发布时间
-    reg = re.compile(r'class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2"><a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? <span class="t5">(.*?)</span>', re.S)  # 匹配换行符
+    reg = re.compile(r'class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2">\
+        <a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? \
+        <span class="t5">(.*?)</span>',re.S)  # 匹配换行符
     items = re.findall(reg, html)
     return items
 
 
 def get_job_desc(url):  # 获取职位描述
-    a = urllib.request.urlopen(url)  # 打开网址
+    context = ssl._create_unverified_context() 
+    a = urllib.request.urlopen(url, context=context)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     items = []
 
     # 该公司所有职位URL 公司类型 公司规模 公司行业
-    reg = re.compile(r'<div class="cn">.*?<a track-type="jobsButtonClick" event-type="2" class="i_house" href="(.*?)" target="_blank">该公司所有职位</a>.*?<p class="msg ltype">(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)</p>', re.S)
+    reg = re.compile(r'<div class="cn">.*?<a track-type="jobsButtonClick" event-type="2" \
+    class="i_house" href="(.*?)" target="_blank">该公司所有职位</a>.*?\
+    <p class="msg ltype">(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)</p>',re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')
         temp[0] = ['', '', '', '']
     for item in temp[0]:
-        items.append(item.replace("\r", "").replace(
-            "\n", "").replace("\t", "").replace(" ", ""))
+        items.append(item.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 学历（可为空）
-    reg = re.compile(
-        r'<em class="i2"></em>(.*?)</span>', re.S)
+    reg = re.compile(r'<em class="i2"></em>(.*?)</span>', re.S)
     temp = re.findall(reg, html)
     if len(temp) > 0:
-        items.append(temp[0].replace("\r", "").replace(
-            "\n", "").replace("\t", "").replace(" ", ""))
+        items.append(temp[0].replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
     else:
         items.append("")
 
     # 经验 招聘人数
-    reg = re.compile(
-        r'<div class="tCompany_main" >.*?<em class="i1"></em>(.*?)</span>.*?<em class="i3"></em>(.*?)</span>', re.S)
+    reg = re.compile(r'<div class="tCompany_main" >.*?<em class="i1"></em>(.*?)</span>.*?<em class="i3"></em>(.*?)</span>',re.S)
     temp = re.findall(reg, html)[0]
     for item in temp:
-        items.append(item.replace("\r", "").replace(
-            "\n", "").replace("\t", "").replace(" ", ""))
+        items.append(item.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 福利标签（可为空）
-    reg = re.compile(
-        r'<div class="tCompany_main" >.*?<p class="t2">(.*?)</p>', re.S)
+    reg = re.compile(r'<div class="tCompany_main" >.*?<p class="t2">(.*?)</p>',
+                     re.S)
     temp = re.findall(reg, html)
     if len(temp) > 0:
-        items.append(temp[0].replace("\r", "").replace(
-            "\n", "").replace("\t", "").replace(" ", ""))
+        items.append(temp[0].replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
     else:
         items.append("")
 
     # 职位描述
-    reg = re.compile(
-        r'<div class="bmsg job_msg inbox">(.*?)<div class="mt10">', re.S)
+    reg = re.compile(r'<div class="bmsg job_msg inbox">(.*?)<div class="mt10">', re.S)
     temp = re.findall(reg, html)[0]
-    items.append(temp.replace("\r", "").replace(
-        "\n", "").replace("\t", "").replace(" ", ""))
+    items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 职能类别
-    reg = re.compile(
-        r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>(.*?)</p>.*?</div>.*?<div class="share">', re.S)
+    reg = re.compile(r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>(.*?)</p>.*?</div>.*?<div class="share">',re.S)
     temp = re.findall(reg, html)[0]
-    items.append(temp.replace("\r", "").replace(
-        "\n", "").replace("\t", "").replace(" ", "").replace(r'<spanclass="el">', "").replace("</span>", " "))
+    items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", "").replace(r'<spanclass="el">', "").replace("</span>", " "))
 
     # 公司地址 公司信息
-    reg = re.compile(
-        r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>', re.S)
+    reg = re.compile(r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>',re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')
         temp[0] = ['', '']
     for item in temp[0]:
-        items.append(item.replace("\r", "").replace(
-            "\n", "").replace("\t", "").replace(" ", ""))
+        items.append(item.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
     return items
-
-
-def excel_write(items, index, ws):
-    # 爬取到的内容写入excel表格
-    for item in items:  # 职位信息
-        for i in range(0, len(item)-1):
-            ws.write(index, i, item[i])  # 行，列，数据
-        index += 1
 
 
 def thread_process(startPage, endPagae, jobName):
@@ -152,32 +137,27 @@ def thread_process(startPage, endPagae, jobName):
     timeout = 2
     socket.setdefaulttimeout(timeout)
 
-    datetime = time.strftime("%Y%m%d", time.localtime())
-    newTable = "51Job抓取_%s_%s_北上广深杭_不限行业_%d.xls" % (
-        datetime, jobName, startPage)  # 表格名称
-    wb = xlwt.Workbook(encoding='utf-8')  # 创建excel文件，声明编码
-    ws = wb.add_sheet('sheet1', cell_overwrite_ok=True)  # 创建表格
-    headData = ['JobName', 'JobURL', 'Company', 'Adress', 'Salary', 'Date', 'PublishDate', 'AllJobUrl', 'CompanyType',
-                'CompanySize', 'Industry', 'Education', 'Experience', 'Number', 'Welfare', 'JobDesc', 'JobLabel', 'ContactAdress']  # 表头部信息
-    for colnum in range(0, len(headData)):
-        ws.write(0, colnum, headData[colnum],
-                 xlwt.easyxf('font: bold on'))  # 行，列
+    # 获取游标
+    db = get_db_conn()
+    cursor = db.cursor()
+    tbName = '51Job抓取_' + jobName + '_北上广深杭_不限行业'
 
     for each in range(startPage, endPagae):
-        index = (each-1)*50+1
+        index = (each - 1) * 50 + 1
         # 因为是分开存储excel，所以需要修正行数
-        index = (index-(startPage-1)*50)
-        # 职位 职位url 公司名 工作地点 薪资 发布时间
+        index = (index - (startPage - 1) * 50)
+        # 二维数组：[0] => 职位 职位url 公司名 工作地点 薪资 发布时间
         temp = []
         try:
             temp = get(get_content(jobName, each))
         except Exception:
             print("error")
             continue
-        items = [[] for i in range(len(temp))]
+            
         for i in range(len(temp)):
             url = temp[i][1]
-            print('%d %d %d%% %s' % (i, index, int(each*100/endPagae), url))
+            print('%d %d %d%% %s' % (i, index, int(each * 100 / endPagae), url))
+            # 初始化11空值
             descItems = []
             # 只抓取发布在51job上的职位描述
             if 'https://jobs.51job.com' in url:
@@ -185,16 +165,29 @@ def thread_process(startPage, endPagae, jobName):
                     descItems = get_job_desc(url)
                 except Exception:
                     print("error")
-            tempArr = []
-            tempArr.extend(temp[i])
-            tempArr.extend(descItems)
-            items[i].extend(tempArr)
-            excel_write(items, index, ws)
-        wb.save(newTable)
-    wb.save(newTable)
+                    continue
+            else:
+                continue
 
+            # 拼接sql语句
+            nowDate = datetime.datetime.now().strftime('%Y-%m-%d')  #现在
+            # pymysql.escape_string：字符串转义
+            sql = 'insert into {0} values("{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8}",\
+                "{9}","{10}","{11}","{12}","{13}","{14}","{15}","{16}","{17}","{18}")'\
+                .format(tbName,temp[i][0],temp[i][1],temp[i][2],temp[i][3],temp[i][4],nowDate,temp[i][5],\
+                descItems[0],descItems[1],descItems[2],descItems[3],descItems[4],descItems[5],descItems[6],\
+                pymysql.escape_string(descItems[7]),pymysql.escape_string(descItems[8]),descItems[9],descItems[10])
 
-class myThread (threading.Thread):  # 自定义线程
+            # 插入
+            cursor.execute(sql)
+            # 提交到数据库执行(一次提交10条)
+            if i % 10 == 0 or i == (len(temp)-1):
+                db.commit()
+    # 关闭游标 和 数据链接
+    cursor.close()
+    db.close()
+
+class myThread(threading.Thread):  # 自定义线程
     def __init__(self, name, startPage, endPage, jobName):
         threading.Thread.__init__(self)
         self.name = name
@@ -208,26 +201,78 @@ class myThread (threading.Thread):  # 自定义线程
         print("exit thread:" + self.name)
 
 
-def start_write_to_excel(jobName):
+def get_db_conn():
+    db = pymysql.connect(
+        host='127.0.0.1',
+        port=3306,
+        user='root',
+        passwd='',
+        db='crawler',
+        charset='utf8')  # 打开数据库连接
+    return db
+
+
+def create_db_table(jobName):
+    db = get_db_conn()
+
+    cursor = db.cursor()  # 使用cursor()方法获取操作游标
+    tbName = '51Job抓取_' + jobName + '_北上广深杭_不限行业'
+    sql = 'show tables like \'' + tbName + '\''  # 定义要执行的SQL语句
+
+    # 不存在就创建表
+    cursor.execute(sql)
+    if cursor.rowcount <= 0:
+        sql = 'CREATE TABLE `' + tbName + '` (' \
+            '`JobName` text COMMENT "招聘职位",' \
+            '`JobURL` text COMMENT "职位URL",' \
+            '`Company` text COMMENT "公司",' \
+            '`Adress` text COMMENT "地址",' \
+            '`Salary` varchar(12) DEFAULT NULL COMMENT "薪资",' \
+            '`Date` date DEFAULT NULL COMMENT "抓取时间",' \
+            '`PublishDate` text DEFAULT NULL COMMENT "发布时间",' \
+            '`AllJobUrl` text COMMENT "该公司所有职位URL",' \
+            '`CompanyType` varchar(12) DEFAULT NULL COMMENT "公司类型",' \
+            '`CompanySize` varchar(12) DEFAULT NULL COMMENT "公司规模",' \
+            '`Industry` varchar(128) DEFAULT NULL COMMENT "所在行业",' \
+            '`Education` varchar(32) DEFAULT NULL COMMENT "学历",' \
+            '`Experience` varchar(12) DEFAULT NULL COMMENT "经验要求",' \
+            '`Number` varchar(12) DEFAULT NULL COMMENT "人数",' \
+            '`Welfare` text COMMENT "福利",' \
+            '`JobDesc` text COMMENT "职位信息",' \
+            '`JobLabel` varchar(64) DEFAULT NULL COMMENT "职位标签",' \
+            '`ContactAdress` varchar(128) DEFAULT NULL COMMENT "联系地址"' \
+            ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
+        cursor.execute(sql)
+        print("已成功创建表：" + tbName)
+
+    # 关闭游标 和 数据库链接
+    cursor.close()
+    db.close()
+
+
+def start_write_to_mysql(jobName):
+    # 确保表已创建
+    create_db_table(jobName)
+
     # 条数解析
     total = get_total_count(get_content(jobName, 1))
     total = re.sub(r'\D', "", total)  # 提取数字
-    totalPage = int((int(total) / 50))+1
-    # totalPage = 240
-    print('total:'+str(total)+',totalPage:'+str(totalPage))
+    totalPage = int((int(total) / 50)) + 1
+    #totalPage = 10
+    print('total:' + str(total) + ',totalPage:' + str(totalPage))
 
     # 启用线程抓取，假设CPU为4核，则启用8线程
     threads = []
-    threadNum = 4
+    threadNum = 2
     threadPageSize = int(totalPage / threadNum)
     threadLastPageSize = threadPageSize + (totalPage % threadNum)
     for i in range(0, threadNum):
-        startPage = i*threadPageSize
-        endPage = startPage+threadPageSize
+        startPage = i * threadPageSize
+        endPage = startPage + threadPageSize
         # 处理除不尽的情况
         if (i + 1) == threadNum:
             endPage = (startPage + threadLastPageSize)
-        thread = myThread("thread"+str(i), startPage, endPage, jobName)
+        thread = myThread("thread" + str(i), startPage, endPage, jobName)
         thread.start()
         threads.append(thread)
 
@@ -238,69 +283,6 @@ def start_write_to_excel(jobName):
     print('successful and exit.')
 
 
-def create_db_table(jobName):
-    db = pymysql.connect(host='127.0.0.1', port=3306, user='root',
-                         passwd='837556884', db='crawler', charset='utf8')  # 打开数据库连接
-    cursor = db.cursor()    # 使用cursor()方法获取操作游标
-    tbName = '51Job抓取_' + jobName + '_北上广深杭_不限行业'
-    sql = 'show tables like \'' + tbName + '\''     # 定义要执行的SQL语句
-
-    cursor.execute(sql)
-
-    if cursor.rowcount <= 0:
-        sql = 'CREATE TABLE \'' + tbName + '\' (' \
-            'JobName text COMMENT \'招聘职位\',' \
-            'JobURL text COMMENT \'职位URL\',' \
-            'Company text COMMENT \'公司\',' \
-            'Adress` text COMMENT \'地址\',' \
-            'Salary` varchar(24) DEFAULT NULL COMMENT \'薪资\',' \
-            'Date` date DEFAULT NULL COMMENT \'抓取时间\',' \
-            'PublishDate` varchar(8) DEFAULT NULL COMMENT \'发布时间\',' \
-            'AllJobUrl` text COMMENT \'该公司所有职位URL\',' \
-            'CompanyType` varchar(12) DEFAULT NULL COMMENT \'公司类型\',' \
-            'CompanySize` varchar(12) DEFAULT NULL COMMENT \'公司规模\',' \
-            'Industry` varchar(128) DEFAULT NULL COMMENT \'所在行业\',' \
-            'Education` varchar(32) DEFAULT NULL COMMENT \'学历\',' \
-            'Experience` varchar(12) DEFAULT NULL COMMENT \'经验要求\',' \
-            'Number` varchar(12) DEFAULT NULL COMMENT \'人数\',' \
-            'Welfare` text COMMENT \'福利\',' \
-            'JobDesc` text COMMENT \'职位信息\',' \
-            'JobLabel` varchar(64) DEFAULT NULL COMMENT \'职位标签\',' \
-            'ContactAdress` varchar(128) DEFAULT NULL COMMENT \'联系地址\'' \
-            ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
-        print(sql)
-        cursor.execute(sql)
-        if cursor.rowcount >= 1:
-            print("已成功创建表："+tbName)
-    # 关闭数据库链接
-    cursor = db.close()
-
-
-# def start_write_to_mysql():
-#     # 打开数据库连接
-#     db = pymysql.connect("localhost", "testuser", "test123", "TESTDB")
-#     # 使用cursor()方法获取操作游标
-#     cursor = db.cursor()
-#     sql = 'insert into database test;'      # 定义要执行的SQL语句
-#     for each in range(1, 2000):
-#         index = (each-1)*50+1
-#         # 职位 职位url 公司名 工作地点 薪资 发布时间
-#         temp = get(get_content(each))
-#         for i in range(len(temp)):
-#             url = temp[i][1]
-#             print(url)
-#             # '该公司所有职位URL', '公司类型','公司规模', '所在行业', '学历', '经验要求', '人数', '福利', '职位信息', '职位标签', '联系地址'
-#             descItems = []
-#             # 只抓取发布在51job上的职位描述
-#             if 'https://jobs.51job.com' in url:
-#                 try:
-#                     descItems = get_job_desc(url)
-#                 except:
-#                     print("error")
-
-#     sql = 'drop database test;'      # 定义要执行的SQL语句
-
-
 if __name__ == '__main__':
     # 技术：java c# c/c++ html python php javascript android ios 大数据 Node.js
     # 游戏：游戏 cocos2d U3D unity
@@ -309,7 +291,4 @@ if __name__ == '__main__':
     # 新兴领域：人工智能 物联网 区块链 VR/AR 新能源
     # 高端岗位：技术经理 技术总监 架构师 CTO 运维总监 技术合伙人 项目总监 测试总监
     jobName = "产品经理"
-    create_db_table(jobName)
-    # start_write_to_excel(jobName)
-    # thread_process(806, 961)
-    # start_write_to_mysql()
+    start_write_to_mysql(jobName)

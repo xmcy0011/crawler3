@@ -55,7 +55,8 @@ def get_content(jobName, page):  # 获取原码
 
 
 def get_total_count(html):
-    reg = re.compile(r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
+    reg = re.compile(
+        r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
     items = re.findall(reg, html)
     if len(items) >= 0:
         return items[0]
@@ -64,23 +65,19 @@ def get_total_count(html):
 
 def get(html):
     # 职位 职位url 公司名 工作地点 薪资 发布时间
-    reg = re.compile(r'class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2">\
-        <a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? \
-        <span class="t5">(.*?)</span>',re.S)  # 匹配换行符
+    reg = re.compile(r'class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2"><a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? <span class="t5">(.*?)</span>', re.S)  # 匹配换行符
     items = re.findall(reg, html)
     return items
 
 
 def get_job_desc(url):  # 获取职位描述
-    context = ssl._create_unverified_context() 
-    a = urllib.request.urlopen(url, context=context)  # 打开网址
+    context = ssl._create_unverified_context()
+    a = urllib.request.urlopen(url,context=context)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     items = []
 
     # 该公司所有职位URL 公司类型 公司规模 公司行业
-    reg = re.compile(r'<div class="cn">.*?<a track-type="jobsButtonClick" event-type="2" \
-    class="i_house" href="(.*?)" target="_blank">该公司所有职位</a>.*?\
-    <p class="msg ltype">(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)</p>',re.S)
+    reg = re.compile(r'<div class="cn">.*?<a track-type="jobsButtonClick" event-type="2" class="i_house" href="(.*?)" target="_blank">该公司所有职位</a>.*?<p class="msg ltype">(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)&nbsp;&nbsp;\|&nbsp;&nbsp;(.*?)</p>', re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')
@@ -89,7 +86,8 @@ def get_job_desc(url):  # 获取职位描述
         items.append(item.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 学历（可为空）
-    reg = re.compile(r'<em class="i2"></em>(.*?)</span>', re.S)
+    reg = re.compile(
+        r'<em class="i2"></em>(.*?)</span>', re.S)
     temp = re.findall(reg, html)
     if len(temp) > 0:
         items.append(temp[0].replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
@@ -97,14 +95,15 @@ def get_job_desc(url):  # 获取职位描述
         items.append("")
 
     # 经验 招聘人数
-    reg = re.compile(r'<div class="tCompany_main" >.*?<em class="i1"></em>(.*?)</span>.*?<em class="i3"></em>(.*?)</span>',re.S)
+    reg = re.compile(
+        r'<div class="tCompany_main" >.*?<em class="i1"></em>(.*?)</span>.*?<em class="i3"></em>(.*?)</span>', re.S)
     temp = re.findall(reg, html)[0]
     for item in temp:
         items.append(item.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 福利标签（可为空）
-    reg = re.compile(r'<div class="tCompany_main" >.*?<p class="t2">(.*?)</p>',
-                     re.S)
+    reg = re.compile(
+        r'<div class="tCompany_main" >.*?<p class="t2">(.*?)</p>', re.S)
     temp = re.findall(reg, html)
     if len(temp) > 0:
         items.append(temp[0].replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
@@ -112,17 +111,20 @@ def get_job_desc(url):  # 获取职位描述
         items.append("")
 
     # 职位描述
-    reg = re.compile(r'<div class="bmsg job_msg inbox">(.*?)<div class="mt10">', re.S)
+    reg = re.compile(
+        r'<div class="bmsg job_msg inbox">(.*?)<div class="mt10">', re.S)
     temp = re.findall(reg, html)[0]
     items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 职能类别
-    reg = re.compile(r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>(.*?)</p>.*?</div>.*?<div class="share">',re.S)
+    reg = re.compile(
+        r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>(.*?)</p>.*?</div>.*?<div class="share">', re.S)
     temp = re.findall(reg, html)[0]
     items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", "").replace(r'<spanclass="el">', "").replace("</span>", " "))
 
     # 公司地址 公司信息
-    reg = re.compile(r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>',re.S)
+    reg = re.compile(
+        r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>', re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')

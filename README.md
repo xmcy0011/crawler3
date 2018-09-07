@@ -8,7 +8,7 @@ python：3.6
 
 ```html
 - [已完成]51job职位多线程爬取excel版本
-- 51job职位多线程爬取mysql版本
+- [已完成]51job职位多线程爬取mysql版本
 ```
 
 ## 爬取思路简介

@@ -286,7 +286,7 @@ def start_write_to_mysql(jobName):
 
 
 if __name__ == '__main__':
-    # 技术：java c# c/c++ html python php javascript android ios hadoop Node.js
+    # 技术：java c# c/c++ html python php javascript android ios hadoop Node.js go
     # 领域：前端 后端 大数据 算法
     # 游戏：游戏 cocos2d U3D unity
     # 产品：产品经理 产品助理 项目经理 项目助理
@@ -304,6 +304,7 @@ if __name__ == '__main__':
     start_write_to_mysql("ios")
     start_write_to_mysql("hadoop")
     start_write_to_mysql("node.js")
+    start_write_to_mysql("golang")
 
     start_write_to_mysql("前端")
     start_write_to_mysql("后端")

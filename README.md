@@ -11,7 +11,7 @@ python：3.6
 - [已完成]51job职位多线程爬取mysql版本
 ```
 
-## 使用
+## QuickStart
 ### 安装
 1.安装mysql
 ```bash

@@ -361,3 +361,8 @@ if __name__ == '__main__':
     start_write_to_mysql("技术合伙人")
     start_write_to_mysql("项目总监")
     start_write_to_mysql("测试总监")
+    
+    start_write_to_mysql("市场营销")
+    start_write_to_mysql("广告")
+    start_write_to_mysql("运营")
+    start_write_to_mysql("英语翻译")

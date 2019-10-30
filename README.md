@@ -11,6 +11,56 @@ python：3.6
 - [已完成]51job职位多线程爬取mysql版本
 ```
 
+## 使用
+### 安装
+1.安装mysql
+```bash
+yum list "mariadb*" # 查看包
+yum install mariadb-server -y # 安装
+systemctl start mariadb # 启动,停止使用stop
+systemctl enable mariadb # 开机启动
+```
+
+2.设置密码
+```bash
+mysql # 进入命令行
+set password for root@127.0.0.1 = password('12345'); # 设置root密码为12345
+mysql -uroot -p12345 # 使用新密码进入
+create database crawler # 创建爬虫数据存储数据库，表会自动创建的
+```
+
+3. 安装python3
+```bash
+yum install python3
+python3 -m pip install xlwt  # excel
+python3 -m pip install pymysql # mysql
+```
+
+4.安装tmux
+```bash
+yum install tmux # 关闭终端后，该进程不会退出，后台继续运行
+```
+
+### 运行
+
+1.首次运行
+```bash
+tmux  # 启动一个后台任务终端
+cd /
+mkdir data
+cd /data
+git clone https://github.com/xmcy0011/crawler3.git
+cd crawler3
+python3 jobMysql.py
+```
+
+2.查看上次运行结果
+```bash
+tmux ls # 查看任务列表
+tmux attach 0 # 附加进程，可以看到上次的运行结果
+exit # 退出tmux终端
+```
+
 ## 爬取思路简介
 
 善用正则表达式.\*?

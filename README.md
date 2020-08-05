@@ -61,6 +61,11 @@ tmux attach 0 # 附加进程，可以看到上次的运行结果
 exit # 退出tmux终端
 ```
 
+3.导出
+```bash
+mysqldump -hlocalhost -P3306 -uroot -p12345 --database crawler | gzip > /data/crawler3/51job/crawler2020-07-20.sql.gz
+```
+
 ## 爬取思路简介
 
 善用正则表达式.\*?

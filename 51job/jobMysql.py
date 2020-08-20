@@ -247,9 +247,9 @@ class myThread(threading.Thread):  # 自定义线程
 def get_db_conn():
     db = pymysql.connect(
         host='127.0.0.1',
-        port=3306,
+        port=13306,
         user='root',
-        passwd='123456',
+        passwd='12345',
         db='crawler',
         charset='utf8')  # 打开数据库连接
     return db
@@ -380,7 +380,7 @@ if __name__ == '__main__':
     start_write_to_mysql("新能源")
     start_write_to_mysql("自然语言处理")
     start_write_to_mysql("数据挖掘")
-    start_write_to_mysql("数据采集")
+    start_write_to_mysql("数据分析")
     start_write_to_mysql("搜索算法")
     start_write_to_mysql("推荐算法")
 

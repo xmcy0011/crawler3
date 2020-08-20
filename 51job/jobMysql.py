@@ -11,6 +11,11 @@ import datetime
 import ssl
 
 
+def print_ex(text):
+    nowDate = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 现在
+    print(nowDate + " " + text)
+
+
 def url_config(jobName):
     # 北上广深杭 不限行业
     url = "https://search.51job.com/list/020000%252C010000%252C030200%252C040000%252C080200,000000,0000,00,9,99,"
@@ -91,7 +96,7 @@ def get(html):
             exp = item['attribute_text'][1]
             num = item['attribute_text'][3]
         else:
-            print('error,attribute_text.len < 4: %s %s,%s %s' % (
+            print_ex('error,attribute_text.len < 4: %s %s,%s %s' % (
                 item['job_title'], item['company_name'], item['job_href'], item['attribute_text']))
 
         items.append([item['job_title'], item['job_href'], item['company_name'], item['workarea_text'],
@@ -191,12 +196,12 @@ def thread_process(startPage, endPagae, jobName):
         try:
             temp = get(get_content(jobName, each))
         except Exception:
-            print("error")
+            print_ex("error")
             continue
 
         for i in range(len(temp)):
             url = temp[i][1]
-            print('%d %d %d%% %s' % (i, index, int(each * 100 / endPagae), url))
+            print_ex('%d %d %d%% %s' % (i, index, int(each * 100 / endPagae), url))
             # 初始化11空值
             descItems = []
             # 只抓取发布在51job上的职位描述
@@ -204,7 +209,7 @@ def thread_process(startPage, endPagae, jobName):
                 try:
                     descItems = get_job_desc(url)
                 except Exception:
-                    print("error")
+                    print_ex("error")
                     continue
             else:
                 continue
@@ -239,17 +244,17 @@ class myThread(threading.Thread):  # 自定义线程
         self.jobName = jobName
 
     def run(self):
-        print("start thread:" + self.name)
+        print_ex("start thread:" + self.name)
         thread_process(self.startPage, self.endPage, self.jobName)
-        print("exit thread:" + self.name)
+        print_ex("exit thread:" + self.name)
 
 
 def get_db_conn():
     db = pymysql.connect(
         host='127.0.0.1',
-        port=13306,
+        port=3306,
         user='root',
-        passwd='12345',
+        passwd='123456',
         db='crawler',
         charset='utf8')  # 打开数据库连接
     return db
@@ -286,7 +291,7 @@ def create_db_table(jobName):
                                           '`ContactAdress` text DEFAULT NULL COMMENT "联系地址"' \
                                           ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
         cursor.execute(sql)
-        print("已成功创建表：" + tbName)
+        print_ex("已成功创建表：" + tbName)
 
     # 关闭游标 和 数据库链接
     cursor.close()
@@ -302,7 +307,7 @@ def start_write_to_mysql(jobName):
     total = re.sub(r'\D', "", total)  # 提取数字
     totalPage = int((int(total) / 50)) + 1
     # totalPage = 10
-    print('total:' + str(total) + ',totalPage:' + str(totalPage))
+    print_ex('total:' + str(total) + ',totalPage:' + str(totalPage))
 
     # 启用线程抓取，假设CPU为4核，则启用8线程
     threads = []
@@ -323,7 +328,7 @@ def start_write_to_mysql(jobName):
     for t in threads:
         t.join()
 
-    print('successful and exit.')
+    print_ex('successful and exit.')
 
 
 if __name__ == '__main__':

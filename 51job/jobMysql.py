@@ -303,11 +303,20 @@ def start_write_to_mysql(jobName):
     create_db_table(jobName)
 
     # 条数解析
-    total = get_total_count(get_content(jobName, 1))
+    total = 0
+    for i in range(0, 3):
+        try:
+            # 防止超时引起失败
+            total = get_total_count(get_content(jobName, 1))
+            break
+        except Exception:
+            print('crawler %s error' % jobName)
+            return
+
     total = re.sub(r'\D', "", total)  # 提取数字
     totalPage = int((int(total) / 50)) + 1
     # totalPage = 10
-    print_ex('total:' + str(total) + ',totalPage:' + str(totalPage))
+    print_ex('start crawler:' + jobName + ',total:' + str(total) + ',totalPage:' + str(totalPage))
 
     # 启用线程抓取，假设CPU为4核，则启用8线程
     threads = []
@@ -332,9 +341,6 @@ def start_write_to_mysql(jobName):
 
 
 if __name__ == '__main__':
-    # fixed SSL error
-    ssl._create_default_https_context = ssl._create_unverified_context
-
     # 技术：java c# c/c++ html python php javascript android ios hadoop Node.js go
     # 领域：前端 后端 大数据 算法
     # 游戏：游戏 cocos2d U3D unity

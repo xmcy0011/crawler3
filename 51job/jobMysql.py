@@ -2,12 +2,14 @@
 import socket
 import urllib.request
 import re
-import xlwt  # 用来创建excel文档并写入数据
+import ssl
+import json
 import pymysql  # mysql
 import threading  # 多线程抓取
 from urllib.parse import quote
 import datetime
 import ssl
+
 
 def url_config(jobName):
     # 北上广深杭 不限行业
@@ -48,15 +50,15 @@ def url_config(jobName):
 
 def get_content(jobName, page):  # 获取原码
     url = url_config(jobName) + str(page) + '.html'
-    context = ssl._create_unverified_context() 
-    a = urllib.request.urlopen(url,context=context)  # 打开网址
+    context = ssl._create_unverified_context()
+    a = urllib.request.urlopen(url, context=context)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     return html
 
 
 def get_total_count(html):
-    reg = re.compile(
-        r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
+    reg = re.compile(r'"jobid_count":"(.*?)"', re.S)
+    # r'<div class="sbox">.*?</div>.*?<div class="rt">(.*?)</div>', re.S)
     items = re.findall(reg, html)
     if len(items) >= 0:
         return items[0]
@@ -65,19 +67,51 @@ def get_total_count(html):
 
 def get(html):
     # 职位 职位url 公司名 工作地点 薪资 发布时间
-    reg = re.compile(r'<p class="t1 ">.*? <a target="_blank" title="(.*?)" href="(.*?)".*? <span class="t2"><a target="_blank" title="(.*?)".*?<span class="t3">(.*?)</span>.*?<span class="t4">(.*?)</span>.*? <span class="t5">(.*?)</span>', re.S)  # 匹配换行符
+    # 该公司所有职位URL(替换为公司URL) 公司类型 公司规模 公司行业
+    # 学历（可为空）
+    # 经验 招聘人数
+    # 福利标签（可为空）
+
+    reg = re.compile(r'<script type="text/javascript">.*?window.__SEARCH_RESULT__ = (.*?)</script>', re.S)
     items = re.findall(reg, html)
+
+    user_dic = json.loads(items[0])
+    items = []
+    for item in user_dic['engine_search_result']:
+        edu = ''
+        exp = ''
+        num = ''
+        if len(item['attribute_text']) == 2:
+            num = item['attribute_text'][1]
+        elif len(item['attribute_text']) == 3:
+            edu = item['attribute_text'][1]
+            num = item['attribute_text'][2]
+        elif len(item['attribute_text']) == 4:
+            edu = item['attribute_text'][2]
+            exp = item['attribute_text'][1]
+            num = item['attribute_text'][3]
+        else:
+            print('error,attribute_text.len < 4: %s %s,%s %s' % (
+                item['job_title'], item['company_name'], item['job_href'], item['attribute_text']))
+
+        items.append([item['job_title'], item['job_href'], item['company_name'], item['workarea_text'],
+                      item['providesalary_text'], item['issuedate'],
+                      item['company_href'], item['companytype_text'], item['companysize_text'], item['companyind_text'],
+                      edu, exp, num, item['jobwelf_list']
+                      ])
     return items
 
 
 def get_job_desc(url):  # 获取职位描述
     context = ssl._create_unverified_context()
-    a = urllib.request.urlopen(url,context=context)  # 打开网址
+    a = urllib.request.urlopen(url, context=context)  # 打开网址
     html = a.read().decode('gbk')  # 读取源代码并转为unicode
     items = []
 
     # 该公司所有职位URL 公司类型 公司规模 公司行业
-    reg = re.compile(r'<div class="com_tag">.*?<p class="at" title="(.*?)">.*?<p class="at" title="(.*?)">.*?<p class="at" title="(.*?)">.*?<a track-type="jobsButtonClick" event-type="2" class="icon_b i_house" href="(.*?)".*?</div>', re.S)
+    reg = re.compile(
+        r'<div class="com_tag">.*?<p class="at" title="(.*?)">.*?<p class="at" title="(.*?)">.*?<p class="at" title="(.*?)">.*?<a track-type="jobsButtonClick" event-type="2" class="icon_b i_house" href="(.*?)".*?</div>',
+        re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')
@@ -90,7 +124,7 @@ def get_job_desc(url):  # 获取职位描述
     # 广州-天河区&nbsp;&nbsp;|&nbsp;&nbsp;2年经验&nbsp;&nbsp;|&nbsp;&nbsp;招1人&nbsp;&nbsp;|&nbsp;&nbsp;09-07发布
     temp = re.findall(reg, html)[0]
     temp = temp.split('&nbsp;&nbsp;|&nbsp;&nbsp;')
-    if len(temp) == 4: 
+    if len(temp) == 4:
         # 区域 经验 招聘人数 发布时间
         items.append('')
         items.append(temp[1])
@@ -109,7 +143,7 @@ def get_job_desc(url):  # 获取职位描述
         if welfare.strip() == '':
             items.append("")
         else:
-            items.append(welfare.replace(" ", "").replace("\"","\'"))
+            items.append(welfare.replace(" ", "").replace("\"", "\'"))
     else:
         items.append("")
 
@@ -119,12 +153,16 @@ def get_job_desc(url):  # 获取职位描述
     items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", ""))
 
     # 职能类别
-    reg = re.compile(r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>.*?<a.*?>(.*?)</a>.*?</p>', re.S)
+    reg = re.compile(r'<div class="mt10">.*?<p class="fp">.*?<span class="label">职能类别：</span>.*?<a.*?>(.*?)</a>.*?</p>',
+                     re.S)
     temp = re.findall(reg, html)[0]
-    items.append(temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", "").replace(r'<spanclass="el">', "").replace("</span>", " "))
+    items.append(
+        temp.replace("\r", "").replace("\n", "").replace("\t", "").replace(" ", "").replace(r'<spanclass="el">',
+                                                                                            "").replace("</span>", " "))
 
     # 公司地址 公司信息
-    reg = re.compile(r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>', re.S)
+    reg = re.compile(
+        r'<p class="fp">.*?<span class="label">上班地址：</span>(.*?)</p>.*?<div class="tmsg inbox">(.*?)</div>', re.S)
     temp = re.findall(reg, html)
     if len(temp) == 0:
         temp.append('')
@@ -155,7 +193,7 @@ def thread_process(startPage, endPagae, jobName):
         except Exception:
             print("error")
             continue
-            
+
         for i in range(len(temp)):
             url = temp[i][1]
             print('%d %d %d%% %s' % (i, index, int(each * 100 / endPagae), url))
@@ -172,22 +210,25 @@ def thread_process(startPage, endPagae, jobName):
                 continue
 
             # 拼接sql语句
-            nowDate = datetime.datetime.now().strftime('%Y-%m-%d')  #现在
+            nowDate = datetime.datetime.now().strftime('%Y-%m-%d')  # 现在
             # pymysql.escape_string：字符串转义
             sql = 'insert into `{0}` values("{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8}",\
-                "{9}","{10}","{11}","{12}","{13}","{14}","{15}","{16}","{17}","{18}")'\
-                .format(tbName,temp[i][0],temp[i][1],temp[i][2],temp[i][3],temp[i][4],nowDate,temp[i][5],\
-                descItems[3],descItems[0],descItems[1],descItems[2],descItems[4],descItems[5],descItems[6],\
-                pymysql.escape_string(descItems[7]),pymysql.escape_string(descItems[8]),descItems[9],descItems[10])
+                "{9}","{10}","{11}","{12}","{13}","{14}","{15}","{16}","{17}","{18}")' \
+                .format(tbName, temp[i][0], temp[i][1], temp[i][2], temp[i][3], temp[i][4], nowDate, temp[i][5], \
+                        descItems[3], descItems[0], descItems[1], descItems[2], descItems[4], descItems[5],
+                        descItems[6], \
+                        pymysql.escape_string(descItems[7]), pymysql.escape_string(descItems[8]), descItems[9],
+                        descItems[10])
 
             # 插入
             cursor.execute(sql)
             # 提交到数据库执行(一次提交10条)
-            if i % 10 == 0 or i == (len(temp)-1):
+            if i % 10 == 0 or i == (len(temp) - 1):
                 db.commit()
     # 关闭游标 和 数据链接
     cursor.close()
     db.close()
+
 
 class myThread(threading.Thread):  # 自定义线程
     def __init__(self, name, startPage, endPage, jobName):
@@ -208,7 +249,7 @@ def get_db_conn():
         host='127.0.0.1',
         port=3306,
         user='root',
-        passwd='12345',
+        passwd='123456',
         db='crawler',
         charset='utf8')  # 打开数据库连接
     return db
@@ -225,25 +266,25 @@ def create_db_table(jobName):
     cursor.execute(sql)
     if cursor.rowcount <= 0:
         sql = 'CREATE TABLE `' + tbName + '` (' \
-            '`JobName` text COMMENT "招聘职位",' \
-            '`JobURL` text COMMENT "职位URL",' \
-            '`Company` text COMMENT "公司",' \
-            '`Adress` text COMMENT "地址",' \
-            '`Salary` text DEFAULT NULL COMMENT "薪资",' \
-            '`Date` date DEFAULT NULL COMMENT "抓取时间",' \
-            '`PublishDate` text DEFAULT NULL COMMENT "发布时间",' \
-            '`AllJobUrl` text COMMENT "该公司所有职位URL",' \
-            '`CompanyType` text DEFAULT NULL COMMENT "公司类型",' \
-            '`CompanySize` text DEFAULT NULL COMMENT "公司规模",' \
-            '`Industry` text DEFAULT NULL COMMENT "所在行业",' \
-            '`Education` text DEFAULT NULL COMMENT "学历",' \
-            '`Experience` text DEFAULT NULL COMMENT "经验要求",' \
-            '`Number` text DEFAULT NULL COMMENT "人数",' \
-            '`Welfare` text COMMENT "福利",' \
-            '`JobDesc` text COMMENT "职位信息",' \
-            '`JobLabel` text DEFAULT NULL COMMENT "职位标签",' \
-            '`ContactAdress` text DEFAULT NULL COMMENT "联系地址"' \
-            ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
+                                          '`JobName` text COMMENT "招聘职位",' \
+                                          '`JobURL` text COMMENT "职位URL",' \
+                                          '`Company` text COMMENT "公司",' \
+                                          '`Adress` text COMMENT "地址",' \
+                                          '`Salary` text DEFAULT NULL COMMENT "薪资",' \
+                                          '`Date` date DEFAULT NULL COMMENT "抓取时间",' \
+                                          '`PublishDate` text DEFAULT NULL COMMENT "发布时间",' \
+                                          '`AllJobUrl` text COMMENT "该公司所有职位URL",' \
+                                          '`CompanyType` text DEFAULT NULL COMMENT "公司类型",' \
+                                          '`CompanySize` text DEFAULT NULL COMMENT "公司规模",' \
+                                          '`Industry` text DEFAULT NULL COMMENT "所在行业",' \
+                                          '`Education` text DEFAULT NULL COMMENT "学历",' \
+                                          '`Experience` text DEFAULT NULL COMMENT "经验要求",' \
+                                          '`Number` text DEFAULT NULL COMMENT "人数",' \
+                                          '`Welfare` text COMMENT "福利",' \
+                                          '`JobDesc` text COMMENT "职位信息",' \
+                                          '`JobLabel` text DEFAULT NULL COMMENT "职位标签",' \
+                                          '`ContactAdress` text DEFAULT NULL COMMENT "联系地址"' \
+                                          ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
         cursor.execute(sql)
         print("已成功创建表：" + tbName)
 
@@ -260,7 +301,7 @@ def start_write_to_mysql(jobName):
     total = get_total_count(get_content(jobName, 1))
     total = re.sub(r'\D', "", total)  # 提取数字
     totalPage = int((int(total) / 50)) + 1
-    #totalPage = 10
+    # totalPage = 10
     print('total:' + str(total) + ',totalPage:' + str(totalPage))
 
     # 启用线程抓取，假设CPU为4核，则启用8线程
@@ -286,6 +327,9 @@ def start_write_to_mysql(jobName):
 
 
 if __name__ == '__main__':
+    # fixed SSL error
+    ssl._create_default_https_context = ssl._create_unverified_context
+
     # 技术：java c# c/c++ html python php javascript android ios hadoop Node.js go
     # 领域：前端 后端 大数据 算法
     # 游戏：游戏 cocos2d U3D unity
@@ -315,12 +359,12 @@ if __name__ == '__main__':
     start_write_to_mysql("cocos2d")
     start_write_to_mysql("u3d")
     start_write_to_mysql("unity")
-    
+
     start_write_to_mysql("产品经理")
     start_write_to_mysql("产品助理")
     start_write_to_mysql("项目经理")
     start_write_to_mysql("项目助理")
-   
+
     start_write_to_mysql("视觉设计")
     start_write_to_mysql("UI设计")
     start_write_to_mysql("网页设计")
@@ -338,7 +382,7 @@ if __name__ == '__main__':
     start_write_to_mysql("数据挖掘")
     start_write_to_mysql("数据采集")
     start_write_to_mysql("搜索算法")
-    start_write_to_mysql("推荐算法")   
+    start_write_to_mysql("推荐算法")
 
     start_write_to_mysql("机器学习")
     start_write_to_mysql("深度学习")
@@ -347,7 +391,7 @@ if __name__ == '__main__':
     start_write_to_mysql("图像处理")
     start_write_to_mysql("图像识别")
     start_write_to_mysql("语音识别")
- 
+
     start_write_to_mysql("技术经理")
     start_write_to_mysql("技术总监")
     start_write_to_mysql("部门经理")
@@ -357,11 +401,12 @@ if __name__ == '__main__':
     start_write_to_mysql("高级总监")
     start_write_to_mysql("架构师")
     start_write_to_mysql("CTO")
+    start_write_to_mysql("技术合伙人")
     start_write_to_mysql("运维总监")
     start_write_to_mysql("技术合伙人")
     start_write_to_mysql("项目总监")
     start_write_to_mysql("测试总监")
-    
+
     start_write_to_mysql("市场营销")
     start_write_to_mysql("广告")
     start_write_to_mysql("运营")

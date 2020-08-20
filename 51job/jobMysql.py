@@ -252,9 +252,9 @@ class myThread(threading.Thread):  # 自定义线程
 def get_db_conn():
     db = pymysql.connect(
         host='127.0.0.1',
-        port=3306,
+        port=13306,
         user='root',
-        passwd='123456',
+        passwd='12345',
         db='crawler',
         charset='utf8')  # 打开数据库连接
     return db

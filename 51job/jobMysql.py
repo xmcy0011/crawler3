@@ -348,8 +348,8 @@ if __name__ == '__main__':
     # 设计：视觉设计 UI设计 网页设计 平面设计 交互设计 用户研究
     # 新兴领域：人工智能 物联网 区块链 VR/AR 新能源
     # 高端岗位：技术经理 技术总监 架构师 CTO 运维总监 技术合伙人 项目总监 测试总监
-    #start_write_to_mysql("golang")
-    #start_write_to_mysql("ios")
+    start_write_to_mysql("golang")
+    start_write_to_mysql("ios")
     start_write_to_mysql("android")
     start_write_to_mysql("c++")
     start_write_to_mysql("java")

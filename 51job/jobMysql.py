@@ -217,7 +217,7 @@ def thread_process(startPage, endPagae, jobName):
             # 拼接sql语句
             nowDate = datetime.datetime.now().strftime('%Y-%m-%d')  # 现在
             # pymysql.escape_string：字符串转义
-            sql = 'insert into `{0}` values("{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8}",\
+            sql = 'insert into `{0}` values(NULL,"{1}","{2}","{3}","{4}","{5}","{6}","{7}","{8}",\
                 "{9}","{10}","{11}","{12}","{13}","{14}","{15}","{16}","{17}","{18}")' \
                 .format(tbName, temp[i][0], temp[i][1], temp[i][2], temp[i][3], temp[i][4], nowDate, temp[i][5], \
                         descItems[3], descItems[0], descItems[1], descItems[2], descItems[4], descItems[5],
@@ -271,6 +271,7 @@ def create_db_table(jobName):
     cursor.execute(sql)
     if cursor.rowcount <= 0:
         sql = 'CREATE TABLE `' + tbName + '` (' \
+                                          '`ID` int(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,' \
                                           '`JobName` text COMMENT "招聘职位",' \
                                           '`JobURL` text COMMENT "职位URL",' \
                                           '`Company` text COMMENT "公司",' \

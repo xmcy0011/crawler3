@@ -10,6 +10,10 @@ from urllib.parse import quote
 import datetime
 import ssl
 
+count = 0
+mutex = threading.Lock()
+report = []
+
 
 def print_ex(text):
     nowDate = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 现在
@@ -181,6 +185,7 @@ def thread_process(startPage, endPagae, jobName):
     # 2秒超时，防止卡死
     timeout = 2
     socket.setdefaulttimeout(timeout)
+    global count
 
     # 获取游标
     db = get_db_conn()
@@ -224,6 +229,11 @@ def thread_process(startPage, endPagae, jobName):
                         descItems[6], \
                         pymysql.escape_string(descItems[7]), pymysql.escape_string(descItems[8]), descItems[9],
                         descItems[10])
+
+            # 线程安全
+            mutex.acquire()
+            count += 1
+            mutex.release()
 
             # 插入
             cursor.execute(sql)
@@ -299,11 +309,15 @@ def create_db_table(jobName):
 
 
 def start_write_to_mysql(jobName):
+    global report
+    global count
+
     # 确保表已创建
     create_db_table(jobName)
 
     # 条数解析
     total = 0
+    count = 0
     for i in range(0, 3):
         try:
             # 防止超时引起失败
@@ -338,6 +352,7 @@ def start_write_to_mysql(jobName):
         t.join()
 
     print_ex('successful and exit.')
+    report.append(jobName + ':' + str(count))
 
 
 if __name__ == '__main__':
@@ -422,3 +437,6 @@ if __name__ == '__main__':
     start_write_to_mysql("广告")
     start_write_to_mysql("运营")
     start_write_to_mysql("英语翻译")
+
+    for x in report:
+        print_ex(x)

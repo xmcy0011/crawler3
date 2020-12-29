@@ -430,7 +430,6 @@ if __name__ == '__main__':
     start_write_to_mysql("CTO")
     start_write_to_mysql("技术合伙人")
     start_write_to_mysql("运维总监")
-    start_write_to_mysql("技术合伙人")
     start_write_to_mysql("项目总监")
     start_write_to_mysql("测试总监")
 

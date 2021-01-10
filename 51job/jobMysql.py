@@ -15,6 +15,13 @@ mutex = threading.Lock()
 report = []
 
 
+# 记录每个职业抓取的总数信息
+class JobInfo(object):
+    def __init__(self, jobName, crawlerCount):
+        self.jobName = jobName
+        self.count = crawlerCount
+
+
 def print_ex(text):
     nowDate = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # 现在
     print(nowDate + " " + text)
@@ -353,7 +360,53 @@ def start_write_to_mysql(jobName):
         t.join()
 
     print_ex('successful and exit.')
-    report.append(jobName + ':' + str(count))
+    report.append(JobInfo(jobName, count))
+
+
+# 统计每天抓取结果汇总表
+def create_report_db_table(tabName):
+    conn = get_db_conn()
+
+    cursor = conn.cursor()  # 使用cursor()方法获取操作游标
+    sql = 'show tables like \'' + tabName + '\' '
+
+    # 不存在就创建表
+    cursor.execute(sql)
+    if cursor.rowcount <= 0:
+        sql = 'CREATE TABLE `' + tabName + '` (' \
+                                           '`id` int(11) unsigned NOT NULL AUTO_INCREMENT,' \
+                                           '`jobName` varchar(64) NOT NULL COMMENT "职位名称",' \
+                                           '`number` int(11) NOT NULL COMMENT "成功数量",' \
+                                           '`createDate` date NOT NULL COMMENT "创建时间",' \
+                                           'PRIMARY KEY (`id`)' \
+                                           ') ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;'
+        cursor.execute(sql)
+        print_ex("已成功创建表：" + tabName)
+
+    # 关闭游标 和 数据库链接
+    cursor.close()
+    conn.close()
+
+
+def insert_report_to_mysql():
+    global report
+
+    tabName = '51JobReport'
+    create_report_db_table(tabName)
+
+    conn = get_db_conn()
+    cursor = conn.cursor()
+
+    toDay = datetime.datetime.now().strftime('%Y-%m-%d')  # 现在
+
+    for jobInfo in report:
+        sql = 'INSERT INTO `{0}` (`id`, `jobName`, `number`, `createDate`) VALUES (NULL, "{1}", {2}, "{3}");' \
+            .format(tabName, jobInfo.jobName, jobInfo.count, toDay)
+        cursor.execute(sql)
+        conn.commit()
+
+    cursor.close()
+    conn.close()
 
 
 if __name__ == '__main__':
@@ -439,5 +492,6 @@ if __name__ == '__main__':
     start_write_to_mysql("运营")
     start_write_to_mysql("英语翻译")
 
-    for x in report:
-        print_ex(x)
+    for jobInfo in report:
+        print_ex('{0}:{1}'.format(jobInfo.jobName, jobInfo.count))
+    insert_report_to_mysql()
